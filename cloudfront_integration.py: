@@ -1,0 +1,48 @@
+import boto3
+import logging
+from config.s3_config import BUCKET_NAME
+
+# Set up logging
+logging.basicConfig(filename='logs/performance_logs.txt', level=logging.INFO, format='%(asctime)s - %(message)s')
+
+def create_cloudfront_distribution(bucket_name):
+    cloudfront = boto3.client('cloudfront')
+
+    distribution_config = {
+        'CallerReference': 'unique-id-for-distribution',  # Use a unique reference
+        'Origins': {
+            'Items': [
+                {
+                    'Id': 'S3-origin',
+                    'DomainName': f'{bucket_name}.s3.amazonaws.com',
+                    'S3OriginConfig': {
+                        'OriginAccessIdentity': ''
+                    }
+                },
+            ],
+            'Quantity': 1
+        },
+        'Enabled': True,
+        'DefaultCacheBehavior': {
+            'TargetOriginId': 'S3-origin',
+            'ViewerProtocolPolicy': 'allow-all',
+            'MinTTL': 0,
+            'DefaultTTL': 86400,
+            'MaxTTL': 31536000
+        },
+        'PriceClass': 'PriceClass_100'  # Choose the price class for CloudFront (low-cost options)
+    }
+
+    try:
+        # Create the CloudFront distribution
+        response = cloudfront.create_distribution(
+            DistributionConfig=distribution_config
+        )
+        logging.info(f"Successfully created CloudFront distribution for {bucket_name}")
+        return response
+    except Exception as e:
+        logging.error(f"Error creating CloudFront distribution: {e}")
+        return None
+
+if __name__ == "__main__":
+    create_cloudfront_distribution(BUCKET_NAME)
